@@ -12,8 +12,9 @@ jobs:
 
       - name: Diagnose repo layout
         run: |
-          pwd
-          ls -la
+          echo "PWD:"; pwd
+          echo "Top-level files:"; ls -la
+          echo "Search project.yml:"
           find . -maxdepth 3 -name project.yml -print
 
       - name: Detect PROJECT_DIR
@@ -23,7 +24,7 @@ jobs:
           set -e
           PDIR="$(dirname "$(find . -maxdepth 3 -name project.yml | head -n1)")"
           if [ -z "$PDIR" ]; then
-            echo "❌ project.yml not found. Make sure the iOS folder is in the repo."
+            echo "❌ project.yml not found. Push the iOS project (with project.yml) to this repo."
             exit 1
           fi
           echo "PROJECT_DIR=$PDIR" >> $GITHUB_ENV
@@ -33,6 +34,7 @@ jobs:
         working-directory: ${{ env.PROJECT_DIR }}
         run: xcodegen generate
 
+      # 스킴 이름은 project.yml 기준으로 ChatStyleKeyboard 입니다.
       - name: Build (unsigned .app)
         working-directory: ${{ env.PROJECT_DIR }}
         run: |
@@ -45,10 +47,19 @@ jobs:
       - name: Package .ipa (unsigned)
         working-directory: ${{ env.PROJECT_DIR }}
         run: |
+          set -e
+          echo "Search built .app under ./build"
           APP_PATH=$(find ./build -name ChatStyleKeyboard.app -type d | head -n 1)
           if [ -z "$APP_PATH" ]; then
+            echo "Fallback: search anywhere"
             APP_PATH=$(find . -name ChatStyleKeyboard.app -type d | head -n 1)
           fi
+          if [ -z "$APP_PATH" ]; then
+            echo "❌ .app not found. Check previous build logs for errors."
+            exit 1
+          fi
+          echo "Using APP_PATH=$APP_PATH"
+          rm -rf Payload
           mkdir -p Payload
           cp -R "$APP_PATH" Payload/
           zip -r ChatStyleKeyboard-unsigned.ipa Payload
