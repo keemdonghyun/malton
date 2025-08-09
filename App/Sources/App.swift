@@ -4,8 +4,7 @@ import SwiftUI
 struct ChatStyleKeyboardApp: App {
     var body: some Scene {
         WindowGroup {
-            // 첫 화면을 가이드가 포함된 AppEntry로 시작
-            AppEntry()
+            AppEntry()   // 첫 화면: 가이드 포함
         }
     }
 }
