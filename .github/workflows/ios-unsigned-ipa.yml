@@ -1,32 +1,60 @@
 name: iOS Unsigned IPA (for AltStore)
-on: [workflow_dispatch, push]
+on: [workflow_dispatch]
+
 jobs:
   build-unsigned-ipa:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
+
       - name: Install XcodeGen
         run: brew install xcodegen
+
+      - name: Diagnose repo layout
+        run: |
+          pwd
+          ls -la
+          find . -maxdepth 3 -name project.yml -print
+
+      - name: Detect PROJECT_DIR
+        id: detect
+        shell: bash
+        run: |
+          set -e
+          PDIR="$(dirname "$(find . -maxdepth 3 -name project.yml | head -n1)")"
+          if [ -z "$PDIR" ]; then
+            echo "❌ project.yml not found. Make sure the iOS folder is in the repo."
+            exit 1
+          fi
+          echo "PROJECT_DIR=$PDIR" >> $GITHUB_ENV
+          echo "Detected PROJECT_DIR=$PDIR"
+
       - name: Generate Xcode project
-        run: |
-          cd ChatStyleKeyboard-iOS
-          xcodegen generate
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: xcodegen generate
+
       - name: Build (unsigned .app)
+        working-directory: ${{ env.PROJECT_DIR }}
         run: |
-          cd ChatStyleKeyboard-iOS
-          xcodebuild -scheme ChatStyleKeyboard -project ChatStyleKeyboard.xcodeproj -configuration Release -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build
+          xcodebuild -scheme ChatStyleKeyboard \
+            -project ChatStyleKeyboard.xcodeproj \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO build
+
       - name: Package .ipa (unsigned)
+        working-directory: ${{ env.PROJECT_DIR }}
         run: |
-          cd ChatStyleKeyboard-iOS
           APP_PATH=$(find ./build -name ChatStyleKeyboard.app -type d | head -n 1)
           if [ -z "$APP_PATH" ]; then
-            APP_PATH=$(find ./ -name ChatStyleKeyboard.app -type d | head -n 1)
+            APP_PATH=$(find . -name ChatStyleKeyboard.app -type d | head -n 1)
           fi
           mkdir -p Payload
           cp -R "$APP_PATH" Payload/
           zip -r ChatStyleKeyboard-unsigned.ipa Payload
+
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: ChatStyleKeyboard-unsigned
-          path: ChatStyleKeyboard-iOS/ChatStyleKeyboard-unsigned.ipa
+          path: ${{ env.PROJECT_DIR }}/ChatStyleKeyboard-unsigned.ipa
