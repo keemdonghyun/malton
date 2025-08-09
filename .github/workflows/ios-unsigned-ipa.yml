@@ -14,18 +14,16 @@ jobs:
         run: |
           echo "PWD:"; pwd
           echo "Top-level files:"; ls -la
-          echo "Search project.yml:"
-          find . -maxdepth 3 -name project.yml -print
+          echo "Search project.yml:"; find . -maxdepth 4 -name project.yml -print
 
       - name: Detect PROJECT_DIR
         id: detect
         shell: bash
         run: |
           set -e
-          PDIR="$(dirname "$(find . -maxdepth 3 -name project.yml | head -n1)")"
+          PDIR="$(dirname "$(find . -maxdepth 4 -name project.yml | head -n1)")"
           if [ -z "$PDIR" ]; then
-            echo "❌ project.yml not found. Push the iOS project (with project.yml) to this repo."
-            exit 1
+            echo "❌ project.yml not found."; exit 1
           fi
           echo "PROJECT_DIR=$PDIR" >> $GITHUB_ENV
           echo "Detected PROJECT_DIR=$PDIR"
@@ -34,29 +32,36 @@ jobs:
         working-directory: ${{ env.PROJECT_DIR }}
         run: xcodegen generate
 
-      # 스킴 이름은 project.yml 기준으로 ChatStyleKeyboard 입니다.
+      - name: List schemes
+        id: lists
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          xcodebuild -list -project ChatStyleKeyboard.xcodeproj
+          # 첫 번째 스킴 자동 추출
+          SCHEME=$(xcodebuild -list -project ChatStyleKeyboard.xcodeproj | awk '/Schemes:/{flag=1;next}/^[^ \t]/{flag=0}flag' | head -n1 | xargs)
+          if [ -z "$SCHEME" ]; then SCHEME="ChatStyleKeyboard"; fi
+          echo "SCHEME=$SCHEME" >> $GITHUB_ENV
+          echo "Detected SCHEME=$SCHEME"
+
       - name: Build (unsigned .app)
         working-directory: ${{ env.PROJECT_DIR }}
         run: |
-          xcodebuild -scheme ChatStyleKeyboard \
+          set -e
+          echo "Building scheme=$SCHEME"
+          xcodebuild -scheme "$SCHEME" \
             -project ChatStyleKeyboard.xcodeproj \
             -configuration Release \
             -destination 'generic/platform=iOS' \
-            CODE_SIGNING_ALLOWED=NO build
+            CODE_SIGNING_ALLOWED=NO build | tee build.log
+          echo "--- Build tail ---"; tail -n 100 build.log
 
       - name: Package .ipa (unsigned)
         working-directory: ${{ env.PROJECT_DIR }}
         run: |
           set -e
-          echo "Search built .app under ./build"
-          APP_PATH=$(find ./build -name ChatStyleKeyboard.app -type d | head -n 1)
+          APP_PATH=$(find ./build -name "*.app" -type d | head -n 1)
           if [ -z "$APP_PATH" ]; then
-            echo "Fallback: search anywhere"
-            APP_PATH=$(find . -name ChatStyleKeyboard.app -type d | head -n 1)
-          fi
-          if [ -z "$APP_PATH" ]; then
-            echo "❌ .app not found. Check previous build logs for errors."
-            exit 1
+            echo "❌ .app not found."; ls -R ./build ; exit 1
           fi
           echo "Using APP_PATH=$APP_PATH"
           rm -rf Payload
