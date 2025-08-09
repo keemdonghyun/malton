@@ -1,22 +1,38 @@
-name: build-unsigned-ipa
-
+name: iOS Unsigned IPA (for AltStore)
 on:
   workflow_dispatch:
 
-env:
-  SCHEME: ChatStyleKeyboard
-
 jobs:
-  build:
-    runs-on: macos-latest
+  build-unsigned-ipa:
+    runs-on: macos-14
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Set up Xcode
+      - name: Show runner Xcode
         run: |
-          sudo xcode-select -switch /Applications/Xcode_15.4.app
           xcodebuild -version
+          sw_vers
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      # 레포 루트의 project.yml로 .xcodeproj 생성 (없으면 실패)
+      - name: Generate Xcode project
+        run: |
+          test -f project.yml || (echo "❌ project.yml not found at repo root" && exit 1)
+          xcodegen generate
+          ls -la
+
+      # 스킴 자동 감지 (없으면 기본 ChatStyleKeyboard 사용)
+      - name: Detect scheme
+        id: scheme
+        run: |
+          SCHEME=$(xcodebuild -list -project ChatStyleKeyboard.xcodeproj | \
+            awk '/Schemes:/{flag=1;next}/^[^ \t]/{flag=0}flag' | head -n1 | xargs)
+          if [ -z "$SCHEME" ]; then SCHEME="ChatStyleKeyboard"; fi
+          echo "SCHEME=$SCHEME" >> $GITHUB_ENV
+          echo "Detected scheme: $SCHEME"
 
       - name: Build (unsigned .app)
         run: |
@@ -43,8 +59,8 @@ jobs:
           cp -R "$APP_PATH" Payload/
           zip -r ChatStyleKeyboard-unsigned.ipa Payload
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v3
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
         with:
           name: ChatStyleKeyboard-unsigned
           path: ChatStyleKeyboard-unsigned.ipa
