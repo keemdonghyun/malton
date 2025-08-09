@@ -1,18 +1,11 @@
 import SwiftUI
 
 @main
-struct ChatStyleApp: App {
-    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+struct ChatStyleKeyboardApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            // 첫 화면을 가이드가 포함된 AppEntry로 시작
+            AppEntry()
         }
-    }
-}
-
-final class AppDelegate: NSObject, UIApplicationDelegate {
-    func application(_ application: UIApplication,
-                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
-        return true
     }
 }
