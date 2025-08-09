@@ -7,10 +7,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Show Xcode version on runner
+        run: |
+          xcodebuild -version
+          sw_vers
+
       - name: Install XcodeGen
         run: brew install xcodegen
 
-      - name: Generate Xcode project
+      # 💡 레포에 들어있는 .xcodeproj(신규 포맷)를 제거하고, XcodeGen으로 다시 생성
+      - name: Remove existing .xcodeproj (if any)
+        run: |
+          rm -rf ChatStyleKeyboard.xcodeproj
+          ls -la
+
+      - name: Generate Xcode project (compatible with runner)
         run: xcodegen generate
 
       - name: List schemes (debug)
@@ -27,7 +38,7 @@ jobs:
             -configuration Release \
             -destination 'generic/platform=iOS' \
             CODE_SIGNING_ALLOWED=NO build | tee build.log
-          echo "--- Build tail ---"; tail -n 50 build.log
+          echo "--- Build tail ---"; tail -n 60 build.log
 
       - name: Package .ipa (unsigned)
         run: |
