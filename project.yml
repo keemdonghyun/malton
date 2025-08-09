@@ -1,0 +1,80 @@
+name: ChatStyleKeyboard
+options:
+  bundleIdPrefix: com.aahut
+configs:
+  Debug: debug
+  Release: release
+settings:
+  base:
+    IPHONEOS_DEPLOYMENT_TARGET: "15.0"
+    SWIFT_VERSION: "5.9"
+targets:
+  ChatStyleKeyboard:
+    type: application
+    platform: iOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: App/Sources
+      - path: App/Assets.xcassets
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.aahut.chatstyle
+        CODE_SIGN_ENTITLEMENTS: App/ChatStyle.entitlements
+    info:
+      path: App/Info.plist
+      properties:
+        UILaunchScreen:
+          UIColorName: "White"
+    entitlements:
+      path: App/ChatStyle.entitlements
+  KeyboardExtension:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: Keyboard/Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.aahut.chatstyle.keyboard
+        CODE_SIGN_ENTITLEMENTS: Keyboard/Keyboard.entitlements
+        INFOPLIST_FILE: Keyboard/Info.plist
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"
+    dependencies:
+      - target: ChatStyleKeyboard
+    extension:
+      type: com.apple.keyboard-service
+    info:
+      path: Keyboard/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.keyboard-service
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).KeyboardViewController
+    entitlements:
+      path: Keyboard/Keyboard.entitlements
+  ShareExtension:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: Share/Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.aahut.chatstyle.share
+        CODE_SIGN_ENTITLEMENTS: Share/Share.entitlements
+        INFOPLIST_FILE: Share/Info.plist
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"
+    dependencies:
+      - target: ChatStyleKeyboard
+    extension:
+      type: com.apple.share-services
+    info:
+      path: Share/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          NSExtensionAttributes:
+            NSExtensionActivationRule:
+              NSExtensionActivationSupportsText: YES
+    entitlements:
+      path: Share/Share.entitlements
