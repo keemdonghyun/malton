@@ -1,36 +1,22 @@
-name: iOS Unsigned IPA (for AltStore)
-on: [workflow_dispatch]
+name: build-unsigned-ipa
+
+on:
+  workflow_dispatch:
+
+env:
+  SCHEME: ChatStyleKeyboard
 
 jobs:
-  build-unsigned-ipa:
-    runs-on: macos-14
+  build:
+    runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      - name: Show runner Xcode
+      - name: Set up Xcode
         run: |
+          sudo xcode-select -switch /Applications/Xcode_15.4.app
           xcodebuild -version
-          sw_vers
-
-      - name: Install XcodeGen
-        run: brew install xcodegen
-
-      # 레포 루트에 있는 project.yml로 .xcodeproj 생성
-      - name: Generate Xcode project
-        run: |
-          test -f project.yml || (echo "❌ project.yml not found at repo root" && exit 1)
-          xcodegen generate
-          ls -la
-
-      # 스킴 자동 감지 (없으면 기본 ChatStyleKeyboard 사용)
-      - name: Detect scheme
-        id: scheme
-        run: |
-          SCHEME=$(xcodebuild -list -project ChatStyleKeyboard.xcodeproj | \
-            awk '/Schemes:/{flag=1;next}/^[^ \t]/{flag=0}flag' | head -n1 | xargs)
-          if [ -z "$SCHEME" ]; then SCHEME="ChatStyleKeyboard"; fi
-          echo "SCHEME=$SCHEME" >> $GITHUB_ENV
-          echo "Detected scheme: $SCHEME"
 
       - name: Build (unsigned .app)
         run: |
@@ -39,6 +25,7 @@ jobs:
             -project ChatStyleKeyboard.xcodeproj \
             -configuration Release \
             -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO build | tee build.log
           echo "---- Build tail ----"
           tail -n 80 build.log
@@ -48,7 +35,7 @@ jobs:
           set -e
           APP_PATH=$(find ./build -type d -name "*.app" | head -n 1)
           if [ -z "$APP_PATH" ]; then
-            echo "❌ .app not found under ./build"; ls -R ./build; exit 1
+            echo "❌ .app not found under ./build"; ls -R ./build || true; exit 1
           fi
           echo "Using APP_PATH=$APP_PATH"
           rm -rf Payload ChatStyleKeyboard-unsigned.ipa
@@ -56,8 +43,8 @@ jobs:
           cp -R "$APP_PATH" Payload/
           zip -r ChatStyleKeyboard-unsigned.ipa Payload
 
-      - name: Upload IPA
-        uses: actions/upload-artifact@v4
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
         with:
           name: ChatStyleKeyboard-unsigned
           path: ChatStyleKeyboard-unsigned.ipa
