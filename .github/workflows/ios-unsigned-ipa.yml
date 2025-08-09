@@ -17,14 +17,22 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
-      # 레포 루트의 project.yml로 .xcodeproj 생성 (없으면 실패)
+      # ✅ 최신 포맷의 .xcodeproj가 있으면 지워서 호환 이슈 제거
+      - name: Remove existing .xcodeproj
+        run: |
+          set -e
+          rm -rf ChatStyleKeyboard.xcodeproj
+          echo "After removal:"
+          ls -la
+
+      # ✅ 루트의 project.yml로 새 .xcodeproj 생성
       - name: Generate Xcode project
         run: |
           test -f project.yml || (echo "❌ project.yml not found at repo root" && exit 1)
           xcodegen generate
           ls -la
 
-      # 스킴 자동 감지 (없으면 기본 ChatStyleKeyboard 사용)
+      # 스킴 자동 감지 (없으면 기본 ChatStyleKeyboard)
       - name: Detect scheme
         id: scheme
         run: |
@@ -52,16 +60,13 @@ jobs:
       - name: Package .ipa (unsigned)
         run: |
           set -euo pipefail
-          # 가장 가능성 높은 경로부터 탐색
           APP_PATH=$(find ./build -maxdepth 6 -type d -path "*/Build/Products/*-iphoneos/*.app" -print -quit)
           if [ -z "$APP_PATH" ]; then
             APP_PATH=$(find ./build -maxdepth 6 -type d -name "*.app" -print -quit)
           fi
           if [ -z "$APP_PATH" ]; then
             echo "❌ .app not found under ./build"
-            echo "---- build folder tree ----"
             ls -R ./build || true
-            echo "---- last 200 lines of build.log ----"
             tail -n 200 build.log || true
             exit 1
           fi
